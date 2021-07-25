@@ -1,0 +1,41 @@
+# DHT22 Temperature + Humidity sensor.
+# HW: ESP-01s and DHT22.
+#DHT22 Pinout: 1: VCC (3.3v) 2: Data (on ESP-01s GPIO2) 3: NC 4: Gnd
+
+esphome:
+  name: sensortemp-dht
+  platform: ESP8266
+  board: esp01_1m
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+  password: !secret ota-dht
+
+sensor:
+  - platform: dht
+    pin: 2
+    temperature:
+      name: "Temperatura Suíte"
+      id: "suite_temp"
+    humidity:
+      name: "Umidade Suíte"
+      id: "suite_humidity"
+    update_interval: 60s
+    model: DHT22
+
+wifi:
+  ssid: !secret ssid1
+  password: !secret passwd2
+#  use_address: testblink
+  
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Sensortemp-Dht Fallback Hotspot"
+    password: !secret passwd2
+  
+captive_portal:
