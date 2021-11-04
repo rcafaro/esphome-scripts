@@ -1,0 +1,227 @@
+## Template para controle de persiana. 
+# Customizar tempo de abertura e fechamento para cada uma
+# Codigo para 1 persiana (botoeira + reles) com 2 sensores de fechamento de janela.
+
+## LER: https://gist.github.com/InToSSH/6f7eb0bd448d2060ca8f410d7a599b33
+##      https://esphome.io/cookbook/arduino_port_extender.html
+
+# Conexão física:
+# ESP01:
+#   D0 - SDA
+#   D2 - SCL
+#   Usar um Level Shifter!
+#
+# Arduino Nano:
+#   A4 - SDA
+#   A5 - SCL
+#   D2 - Botoeira - Abrir
+#   D3 - Botoeira - Fechar
+#   D6 - pino de dados do sensor Hall A3144 (pino 3) - Sensor de janela 1
+#   D6 - pino de dados do sensor Hall A3144 (pino 3) - Sensor de janela 2
+#
+#   D4 - Rele - abrir
+#   D5 - rele - fechar
+
+substitutions:
+  device_name: Persiana Suite
+  close_time: 23.8sec
+  open_time: 25.1sec
+
+esphome:
+  name: persiana-suite
+  platform: ESP8266
+  esp8266_restore_from_flash: true
+  board: esp01_1m
+
+  includes:
+  - arduino_port_expander.h
+
+  on_boot:
+    priority: 750
+    then:
+      - if:
+          condition: 
+            binary_sensor.is_on: persiana_botao_abrir
+          then:
+            - cover.open: persiana
+          else:
+            - if:
+                condition: 
+                  binary_sensor.is_on: persiana_botao_fechar
+                then:
+                  - cover.close: persiana
+
+# Enable logging
+logger:
+  #level: WARN
+
+# Enable Home Assistant API
+api:
+
+ota:
+  password: !secret ota
+
+wifi:
+  ssid: !secret ssid1
+  password: !secret passwd1
+  #use_address: blindexpander.local
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name}
+    password: !secret passwd2
+
+captive_portal:
+
+
+## Sensor temp i2c
+sensor:
+  - platform: bmp085
+    temperature:
+      name: "Suite Temperatura"
+    pressure:
+      name: "Suite Pressão"
+    update_interval: 60s
+
+
+######## Port Expander
+
+# define i2c device
+i2c:
+  id: i2c_component
+  sda: 0 
+  scl: 2 
+  scan: True
+  
+# define the port expander hub, here we define one with id 'expander1',
+# but you can define many
+custom_component:
+  - id: expander1
+    lambda: |-
+      auto expander = new ArduinoPortExpander(i2c_component, 0x08, true);
+      return {expander};
+
+########
+
+### PERSIANA
+
+## Botoeira. São dispositivos de entrada - binary sensors.
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      return {ape_binary_sensor(expander1, 2),
+              ape_binary_sensor(expander1, 3),
+              ape_binary_sensor(expander1, 6),
+              ape_binary_sensor(expander1, 7)// 14 = A0
+              };
+
+    binary_sensors:
+      - id: persiana_botao_abrir
+        name: ${device_name} - Botao Abrir
+
+        filters:
+          - invert:   #alternativa para o inverted=true.
+          - delayed_on_off: 100ms
+
+        on_press:
+          then:
+            - cover.open: persiana
+    
+        on_release:
+          then:
+            - cover.stop: persiana
+
+      - id: persiana_botao_fechar
+        name: ${device_name} - Botao Fechar
+
+        filters:
+          - invert:  #alternativa para o inverted=true.
+          - delayed_on_off: 100ms
+
+        on_press:
+          then:
+            - cover.close: persiana
+    
+        on_release:
+          then:
+            - cover.stop: persiana
+      
+      - id: janela_sensor1
+        name: ${device_name} - Sensor Janela 1
+        
+        filters:
+        - invert:  
+
+      - id: janela_sensor2
+        name: ${device_name} - Sensor Janela 2
+        
+        filters:
+        - invert:  
+
+# define binary outputs, here we have 2
+
+output:
+- platform: custom
+  type: binary
+  lambda: |-
+    return {ape_binary_output(expander1, 4),
+            ape_binary_output(expander1, 5)};
+
+  outputs:
+    - id: porta_rele_abre
+      inverted: true
+    - id: porta_rele_fecha
+      inverted: true
+
+## Relês
+switch:
+  - platform: output 
+    name: ${device_name} - Rele Abrir
+    id: persiana_rele_abrir
+    output: porta_rele_abre
+    internal: true
+
+  - platform: output
+    name: ${device_name} - Rele Fechar
+    id: persiana_rele_fechar
+    output: porta_rele_fecha
+    internal: true
+
+#persiana
+cover:
+  - platform: time_based 
+    name: ${device_name}
+    id: persiana
+#    has_built_in_endstop: True 
+
+    open_action:
+      # so ligar se a botoeira nao estiver acionada.
+      - if:
+          condition:
+            not: 
+              binary_sensor.is_on: persiana_botao_fechar
+          then:
+            - switch.turn_off: persiana_rele_fechar
+            - switch.turn_on: persiana_rele_abrir
+          else:
+            - cover.stop: persiana
+
+    open_duration: ${open_time}
+
+    close_action:
+      # so ligar se a botoeira nao estiver acionada.
+      - if: 
+          condition:
+            not: 
+              binary_sensor.is_on: persiana_botao_abrir
+          then:
+            - switch.turn_off: persiana_rele_abrir
+            - switch.turn_on: persiana_rele_fechar
+          else:
+            - cover.stop: persiana
+
+    close_duration: ${close_time}
+
+    stop_action:
+      - switch.turn_off: persiana_rele_abrir
+      - switch.turn_off: persiana_rele_fechar
