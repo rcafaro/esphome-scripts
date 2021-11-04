@@ -1,0 +1,39 @@
+#sensor temparatura BMP085 
+esphome:
+  name: sensor-temp
+  platform: ESP8266
+  board: esp01_1m
+
+# Enable logging
+logger:
+
+i2c:
+  sda: 0
+  scl: 2
+  scan: True
+  id: bus_a
+
+sensor:
+  - platform: bmp085
+    temperature:
+      name: "Temperatura"
+    pressure:
+      name: "Pressão"
+    update_interval: 60s
+
+# Enable Home Assistant API
+api:
+
+ota:
+  password: !secret ota
+
+wifi:
+  ssid: !secret ssid1
+  password: !secret passwd1
+  
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret ssid2
+    password: !secret passwd2
+
+captive_portal:
