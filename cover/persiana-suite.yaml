@@ -15,17 +15,17 @@
 #   A4 - SDA
 #   A5 - SCL
 #   D2 - Botoeira - Abrir
-#   D3 - Botoeira - Fechar
+#   D3 - Botoe ira - Fechar
 #   D6 - pino de dados do sensor Hall A3144 (pino 3) - Sensor de janela 1
-#   D6 - pino de dados do sensor Hall A3144 (pino 3) - Sensor de janela 2
+#   D7 - pino de dados do sensor Hall A3144 (pino 3) - Sensor de janela 2
 #
 #   D4 - Rele - abrir
 #   D5 - rele - fechar
 
 substitutions:
   device_name: Persiana Suite
-  close_time: 23.8sec
-  open_time: 25.1sec
+  close_time: 24sec
+  open_time: 25.5sec
 
 esphome:
   name: persiana-suite
@@ -39,6 +39,7 @@ esphome:
   on_boot:
     priority: 750
     then:
+      - logger.log: "Boot detected"
       - if:
           condition: 
             binary_sensor.is_on: persiana_botao_abrir
@@ -62,8 +63,8 @@ ota:
   password: !secret ota
 
 wifi:
-  ssid: !secret ssid1
-  password: !secret passwd1
+  ssid: !secret ssid3
+  password: !secret passwd3
   #use_address: blindexpander.local
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
@@ -75,13 +76,13 @@ captive_portal:
 
 
 ## Sensor temp i2c
-sensor:
-  - platform: bmp085
-    temperature:
-      name: "Suite Temperatura"
-    pressure:
-      name: "Suite Pressão"
-    update_interval: 60s
+#sensor:
+#  - platform: bmp085
+#    temperature:
+#      name: "Suite Temperatura"
+#    pressure:
+#      name: "Suite Pressão"
+#    update_interval: 60s
 
 
 ######## Port Expander
