@@ -1,0 +1,86 @@
+# Estação metereológica e controle do Boiler
+# Inclui: 
+#   Sensor dallas de alta precisão para temperatura do Boiler 
+#   DHT22 para temperatura externa (pino 1 - TX) - rull up resistor data e vcc
+#   Relê para acionamento de contator/boiler (pino 3 - RX) (modulo em 3v3)
+
+substitutions:
+  device_name: Boiler
+
+esphome:
+  name: weather-boiler
+  platform: ESP8266
+  board: esp01_1m
+  esp8266_restore_from_flash: true
+
+
+# Libera portas seriais - UART0 - TX: GPIO1, RX: GPIO3
+logger:
+  baud_rate: 0
+  
+# Enable Home Assistant API
+api:
+
+wifi:
+  ssid: !secret ssid3
+  password:  !secret passwd3
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name} Hotspot
+    password: !secret ssid2
+
+captive_portal:
+
+ota:
+  password: !secret ota
+
+
+# bus para sensor dallas
+dallas:
+  - pin: 0
+
+sensor:
+
+  - platform: dht
+    pin: 1
+    temperature:
+      name: "External Temperature"
+    humidity:
+      name: "External Humidity"
+    update_interval: 60s
+    model: DHT22
+
+#  - platform: dht
+#    pin: 0
+#    temperature:
+#      name: "Boiler Temperature"
+#    humidity:
+#      name: "Boiler Humidity"
+#    update_interval: 60s
+#    model: DHT11
+
+  - platform: dallas
+    address: 0x6D03168CE404FF28
+    name: "Boiler Temperature"
+
+binary_sensor:
+  # Status do nó
+  - platform: status
+    name: ${device_name} - Device
+    id: boiler_device
+    disabled_by_default: false
+    internal: false
+
+## Relês
+switch:
+  - platform: gpio
+    pin: 3
+    name: Boiler Switch
+    id: boiler_ligar
+    inverted: false
+
+   #remote restart
+  - platform: restart
+    name: ${device_name} - Restart
+    id: boiler_restart
